@@ -23,10 +23,12 @@ class Calculator(QWidget):
         self.setWindowTitle("Multi tabs calculator")
 
         self.app_layout = QVBoxLayout()
-        self.output_layout = QHBoxLayout()
+        self.output_layout = QVBoxLayout()
         self.buttons_layout = QGridLayout()
 
         self.output_label = QLabel("0")
+        self.history_label = QLabel('')
+        self.output_layout.addWidget(self.history_label)
         self.output_layout.addWidget(self.output_label)
 
         self.app_layout.addLayout(self.output_layout)
@@ -43,6 +45,8 @@ class Calculator(QWidget):
         for i in range(10):
             if event.key() == getattr(Qt, f'Key_{i}'):
                 self.update_user_input(str(i))
+                if len(self.user_inputs) % 2 == 1 and len(self.user_inputs) > 1:
+                    self.calculate()
         if event.key() == Qt.Key_Plus:
             self.update_user_input('+')
         if event.key() == Qt.Key_Minus:
@@ -56,26 +60,70 @@ class Calculator(QWidget):
 
     def update_user_input(self, key):
         if key.isdigit() and self.user_inputs[-1].isdigit():
-            self.user_inputs[-1] = self.user_inputs[-1] + key
+            if self.user_inputs[-1] == '0':
+                self.user_inputs[-1] = key
+            else:
+                self.user_inputs[-1] = self.user_inputs[-1] + key
             self.update_output(self.user_inputs[-1])
         elif key.isdigit() and not self.user_inputs[-1].isdigit():
             self.user_inputs.append(key)
             self.update_output(key)
         elif key in Calculator.OPERATORS:
-            self.user_inputs.append(key)
+            if self.user_inputs[-1] in Calculator.OPERATORS:
+                self.user_inputs[-1] = key
+            else:
+                self.user_inputs.append(key)
+            self.update_output('')
         elif key == 'backspace' and self.user_inputs[-1].isdigit():
             self.user_inputs[-1] = self.user_inputs[-1][:-1]
             self.update_output(self.output_label.text()[:-1])
         if self.user_inputs[-1] == '':
             self.user_inputs[-1] = '0'
-        print(self.user_inputs)
 
     def update_output(self, text):
         assert isinstance(text, str)
         self.output_label.setText(text)
+        self.history_label.setText("".join(self.user_inputs))
 
-    def caculate(self):
-        pass
+    def calculate(self):
+        postfix = self.infix_to_postfix(self.user_inputs)
+        stack = []
+        for item in postfix:
+            if item.isdigit():
+                stack.append(int(item))
+            else:
+                if item == '+':
+                    stack.append(stack.pop() + stack.pop())
+                if item == '-':
+                    stack.append(stack.pop() - stack.pop())
+                if item == '*':
+                    stack.append(stack.pop() * stack.pop())
+                if item == '/':
+                    stack.append(stack.pop() / stack.pop())
+        print(stack)
+
+    def infix_to_postfix(self, expr):
+        precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+        postfix = []
+        stack = []
+        for item in expr:
+            if item.isdigit():
+                postfix.append(item)
+            else:
+                if not stack:
+                    stack.append(item)
+                else:
+                    if precedence[item] > precedence[stack[-1]]:
+                        stack.append(item)
+                    else:
+                        while precedence[item] <= precedence[stack[-1]]:
+                            postfix.append(stack.pop())
+                            if not stack:
+                                break
+                        stack.append(item)
+        while stack:
+            postfix.append(stack.pop())
+        return postfix
 
     def buttons(self):
         self.buttons = {}
