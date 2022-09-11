@@ -5,17 +5,15 @@ from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QTabWidget,
-    QHBoxLayout,
     QVBoxLayout,
     QGridLayout,
     QPushButton,
-    QTextEdit,
     QLabel,
     QWidget,
 )
 from PyQt5.Qt import Qt
-from PyQt5.QtCore import QEvent,QSize
-from PyQt5.QtGui import QFont,QKeyEvent
+from PyQt5.QtCore import QEvent, QSize
+from PyQt5.QtGui import QFont, QKeyEvent
 
 
 class App(QMainWindow):
@@ -25,43 +23,50 @@ class App(QMainWindow):
         self.title = "Multi tabs calculator"
         self.left = 0
         self.top = 0
-        self.width = 300
+        self.width = 400
         self.height = 400
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
-        self.tabs = CustomTabWidget()
+        self.tabs = CustomTabWidget(self)
 
 
 class CustomTabWidget(QTabWidget):
-    def __init__(self):
+    MAX_TABS_COUNT = 10
+
+    def __init__(self, main_window):
         super().__init__()
+        self.main_window = main_window
         self.new_tab_button = QPushButton('+')
         self.new_tab_button.setParent(self)
-        self.new_tab_button.setFixedSize(28,28)
+        self.new_tab_button.setFixedSize(28, 28)
         self.new_tab_button.clicked.connect(self.create_new_tab)
-        h = self.geometry().top()
-        w = self.width()
-        #self.new_tab_button.move(w-25, h)
+
+    def sizeHint(self):
+        sizeHint = super().sizeHint()
+        width = sizeHint.width()
+        height = sizeHint.height()
         self.move_new_tab_button()
-    
-    #def sizeHint(self):
-    #    sizeHint = super().sizeHint()
-    #    width = sizeHint.width()
-    #    height = sizeHint.height()
-    #    return QSize(width, height)
+        return QSize(width, height)
 
     def create_new_tab(self):
-        pass
+        tab_id = self.tabBar().count() + 1
+        if tab_id > CustomTabWidget.MAX_TABS_COUNT:
+            return
+        new_calculator = Calculator(self.main_window, f'&{tab_id}')
+        new_calculator.setFocus()
+        self.setCurrentWidget(new_calculator)
+        self.move_new_tab_button()
+
     def resizeEvent(self, a0):
         super().resizeEvent(a0)
         self.move_new_tab_button()
 
     def move_new_tab_button(self):
-        size = sum([self.widget(i).width() for i in range(self.count())])
+        size = sum([self.tabBar().tabRect(i).width() for i in range(self.tabBar().count())])
         h = self.geometry().top()
         w = self.width()
-        if size > w: 
+        if size > w:
             self.new_tab_button.move(w-25, h)
         else:
             self.new_tab_button.move(size, h)
@@ -81,9 +86,11 @@ class Calculator(QWidget):
         self.buttons_layout = QGridLayout()
 
         self.output_label = QLabel("0")
-        self.output_label.setFont(QFont('Open Sans', 20))
+        self.output_label.setFont(QFont('Open Sans', 30))
 
         self.history_label = QLabel('')
+        self.history_label.setFont(QFont('Open Sand', 20))
+
         self.output_layout.addWidget(self.history_label)
         self.output_layout.addWidget(self.output_label)
         self.layout.addLayout(self.output_layout)
@@ -99,15 +106,14 @@ class Calculator(QWidget):
         self.user_inputs = ['0']
         self.history = []
         self.setFocus()
-    
+
     @property
     def last_input(self):
         return self.user_inputs[-1]
-    
+
     @last_input.setter
     def last_input(self, value):
         self.user_inputs[-1] = value
-
 
     def keyPressEvent(self, event):
         for i in range(10):
@@ -133,28 +139,28 @@ class Calculator(QWidget):
             if event.key() == Qt.Key_Enter:
                 self.update_user_input('+')
             self.calculate_operation()
-                
+
     def calculate_operation(self):
-        if len(self.user_inputs) <=2:
+        if len(self.user_inputs) <= 2:
             if self._last_result == '':
-                self.update_output('',self.user_inputs)
+                self.update_output('', self.user_inputs)
             else:
-                self.update_output('',[str(self._last_result)] + self.user_inputs)
+                self.update_output('', [str(self._last_result)] + self.user_inputs)
         if len(self.user_inputs) % 2 == 0 and len(self.user_inputs) > 2 and self._last_result =='':
             self._last_result = self.calculate(self.user_inputs[:-1])
             self._last_operator = self.last_input
-            self.history.append(self.user_inputs[:-1]) 
+            self.history.append(self.user_inputs[:-1])
             self.update_output(str(self._last_result), self.user_inputs[:-1] + ['='])
             self.user_inputs = [str(self._last_operator)]
-            
+
         if self._last_result != '' and len(self.user_inputs) >= 2:
             self.user_inputs = [str(self._last_result)] + self.user_inputs
             self._last_result = self.calculate(self.user_inputs[:-1])
             self._last_operator = self.last_input
-            self.history.append(self.user_inputs[:-1]) 
+            self.history.append(self.user_inputs[:-1])
             self.update_output(str(self._last_result), self.user_inputs[:-1] + ['='])
             self.user_inputs = [str(self._last_operator)]
-    
+
     def update_user_input(self, key):
         if Calculator.p.match(key) and Calculator.p.match(self.last_input):
             if self.last_input == '0':
@@ -175,7 +181,7 @@ class Calculator(QWidget):
             self.last_input = self.last_input[:-1]
             self.update_output(self.last_input)
         elif key == '.' and Calculator.p.match(self.last_input):
-            if not '.' in self.last_input:
+            if '.' not in self.last_input:
                 self.last_input = self.last_input + key
                 self.update_output(self.last_input)
         elif key == 'CE' or key == 'del':
@@ -185,9 +191,7 @@ class Calculator(QWidget):
         elif key == 'C' or key == 'esc':
             self.reset()
         elif key == '=':
-            print(key)
             self.calculate_operation()
-
         if self.last_input == '':
             self.last_input = '0'
 
@@ -195,8 +199,8 @@ class Calculator(QWidget):
         assert isinstance(output, str)
         self.output_label.setText(self.thousands_separator(output))
         self.history_label.setText("".join(map(self.thousands_separator, prev_operation)))
-    
-    def thousands_separator(self,number):
+
+    def thousands_separator(self, number):
         if not Calculator.p.match(number):
             return number
         if number.endswith('.0'):
@@ -277,19 +281,19 @@ class Calculator(QWidget):
             '-': 'Minus',
             '*': 'Asterisk',
             '/': 'Slash',
+            '.': 'Period',
             'C': 'Escape',
             'CE': 'Delete',
         }
         if key.isdigit():
-            self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key}'),Qt.NoModifier))
+            self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key}'), Qt.NoModifier))
         elif key in key_map.keys():
-            self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key_map[key]}'),Qt.NoModifier))
+            self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key_map[key]}'), Qt.NoModifier))
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    ex = App()
-    calculator = Calculator(ex, '&1')
-    calculator2 = Calculator(ex, '&2')
-    ex.show()
+    main_window = App()
+    Calculator(main_window, '&1')
+    main_window.show()
     sys.exit(app.exec_())
