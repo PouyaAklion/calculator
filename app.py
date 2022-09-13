@@ -79,6 +79,7 @@ class Calculator(QWidget):
     def __init__(self, parent, name):
         super().__init__(parent)
         self.setWindowTitle("Multi tabs calculator")
+        self.parent = parent
 
         self.layout = QVBoxLayout()
 
@@ -135,8 +136,8 @@ class Calculator(QWidget):
             self.update_user_input('esc')
         if event.key() == Qt.Key_Period:
             self.update_user_input('.')
-        if event.key() in (Qt.Key_Plus, Qt.Key_Minus,  Qt.Key_Asterisk, Qt.Key_Slash, Qt.Key_Enter):
-            if event.key() == Qt.Key_Enter:
+        if event.key() in (Qt.Key_Plus, Qt.Key_Minus,  Qt.Key_Asterisk, Qt.Key_Slash, Qt.Key_Enter, Qt.Key_Return):
+            if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
                 self.update_user_input('+')
             self.calculate_operation()
 
@@ -260,6 +261,10 @@ class Calculator(QWidget):
 
     def create_buttons(self):
         self.buttons = {}
+        self.close_tab_button = QPushButton('Close Tab')
+        self.close_tab_button.clicked.connect(self.close_tab)
+        self.output_layout.addWidget(self.close_tab_button,0,Qt.AlignRight)
+        self.close_tab_button.setStyleSheet("background-color: #ed5555;border-width:0px")
         buttons_text = [
             ['C', 'CE', 'back', '#'],
             ['7', '8', '9', '/'],
@@ -289,6 +294,10 @@ class Calculator(QWidget):
             self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key}'), Qt.NoModifier))
         elif key in key_map.keys():
             self.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress,getattr(Qt,f'Key_{key_map[key]}'), Qt.NoModifier))
+    
+    def close_tab(self):
+        self.parent.tabs.removeTab(self.parent.tabs.currentIndex())
+        del self
 
 
 if __name__ == "__main__":
